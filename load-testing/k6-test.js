@@ -21,10 +21,10 @@ export default function () {
   const metricsRes = http.get(`${BASE_URL}/metrics`);
   check(metricsRes, { 'metrics is 200': (r) => r.status === 200 });
 
-  // 3. Attempt a booking with random data to generate internal service calls
-  // Most will 404 on User Service, which is fine for generating CPU load
-  const userId = Math.floor(Math.random() * 10000) + 1;
-  const eventId = 1; 
+  // Most will 404 on User Service if not seeded, but if we seed them, it will work.
+  // We use __VU and __ITER to guarantee unique combinations for the constraint.
+  const userId = (__VU * 10000) + __ITER;
+  const eventId = (__ITER % 10) + 1; 
 
   const payload = JSON.stringify({
     user_id: userId,

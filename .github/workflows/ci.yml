@@ -31,7 +31,7 @@ jobs:
         env:
           POSTGRES_DB: reservex
           POSTGRES_USER: reservex
-          POSTGRES_PASSWORD: REPLACE_ME_PASSWORD
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD || 'REPLACE_ME_TEST_PASS' }}
         ports:
           - 5432:5432
         options: >-
@@ -56,14 +56,14 @@ jobs:
 
       - name: Initialize Database
         env:
-          PGPASSWORD: REPLACE_ME_PASSWORD
+          PGPASSWORD: ${{ secrets.DB_PASSWORD || 'REPLACE_ME_TEST_PASS' }}
         run: |
           psql -h localhost -U reservex -d reservex -f database/init/001_schema.sql
           psql -h localhost -U reservex -d reservex -f database/seed/seed_data.sql
 
       - name: Start Services
         env:
-          DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@localhost:5432/reservex
+          DATABASE_URL: postgresql://reservex:${{ secrets.DB_PASSWORD || 'REPLACE_ME_TEST_PASS' }}@localhost:5432/reservex
           USER_SERVICE_URL: http://localhost:5001
           EVENT_SERVICE_URL: http://localhost:5002
         run: |

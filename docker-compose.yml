@@ -22,7 +22,7 @@ services:
     environment:
       POSTGRES_DB: reservex
       POSTGRES_USER: reservex
-      POSTGRES_PASSWORD: REPLACE_ME_PASSWORD
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-REPLACE_ME_LOCAL_DEV}
     ports:
       - "5432:5432"
     volumes:
@@ -44,7 +44,7 @@ services:
     ports:
       - "5001:5001"
     environment:
-      DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex
+      DATABASE_URL: postgresql://reservex:${POSTGRES_PASSWORD:-REPLACE_ME_LOCAL_DEV}@postgres:5432/reservex
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +62,7 @@ services:
     ports:
       - "5002:5002"
     environment:
-      DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex
+      DATABASE_URL: postgresql://reservex:${POSTGRES_PASSWORD:-REPLACE_ME_LOCAL_DEV}@postgres:5432/reservex
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,7 +82,7 @@ services:
     ports:
       - "5003:5003"
     environment:
-      DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex
+      DATABASE_URL: postgresql://reservex:${POSTGRES_PASSWORD:-REPLACE_ME_LOCAL_DEV}@postgres:5432/reservex
       USER_SERVICE_URL: http://user-service:5001
       EVENT_SERVICE_URL: http://event-service:5002
     depends_on:

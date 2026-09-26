@@ -12,7 +12,7 @@ import psycopg_pool
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://reservex:REPLACE_ME_PASSWORD@localhost:5432/reservex"
+    "postgresql://reservex:REPLACE_ME_LOCAL_DEV@localhost:5432/reservex"
 )
 
 pool = psycopg_pool.ConnectionPool(

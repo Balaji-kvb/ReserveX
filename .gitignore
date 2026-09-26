@@ -50,3 +50,4 @@ node_modules/
 
 # Master prompt (not needed in repo)
 ReserveX_Master_Prompt_v2.md
+kubernetes/secrets/db-secret.yaml

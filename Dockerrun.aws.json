@@ -31,7 +31,7 @@
         },
         {
           "name": "POSTGRES_PASSWORD",
-          "value": "REPLACE_ME_PASSWORD"
+          "value": "REPLACE_ME_PROD_PASSWORD"
         }
       ],
       "mountPoints": [
@@ -55,7 +55,7 @@
       "environment": [
         {
           "name": "DATABASE_URL",
-          "value": "postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex"
+          "value": "postgresql://reservex:REPLACE_ME_PROD_PASSWORD@postgres:5432/reservex"
         }
       ],
       "links": [
@@ -76,7 +76,7 @@
       "environment": [
         {
           "name": "DATABASE_URL",
-          "value": "postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex"
+          "value": "postgresql://reservex:REPLACE_ME_PROD_PASSWORD@postgres:5432/reservex"
         }
       ],
       "links": [
@@ -97,7 +97,7 @@
       "environment": [
         {
           "name": "DATABASE_URL",
-          "value": "postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex"
+          "value": "postgresql://reservex:REPLACE_ME_PROD_PASSWORD@postgres:5432/reservex"
         },
         {
           "name": "USER_SERVICE_URL",

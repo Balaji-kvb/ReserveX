@@ -1,0 +1,38 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - release
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/release'
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          echo "Placeholder for AWS Elastic Beanstalk deployment using eb cli"
+          # eb deploy reservex-staging
+
+      - name: Deploy to EKS
+        run: |
+          echo "Placeholder for EKS deployment using kubectl"
+          # aws eks update-kubeconfig --name reservex-eks-cluster --region us-east-1
+          # kubectl set image deployment/booking-service booking-service=...

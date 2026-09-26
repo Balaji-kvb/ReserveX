@@ -20,7 +20,8 @@ Communication between services happens through REST APIs.
 
 import os
 import time
-import threading
+import json
+import boto3
 
 from flask import Flask, jsonify, request
 from psycopg.rows import dict_row
@@ -34,7 +35,9 @@ app = Flask(__name__)
 # Service URLs — configurable via environment variables.
 USER_SERVICE_URL = os.environ.get("USER_SERVICE_URL", "http://localhost:5001")
 EVENT_SERVICE_URL = os.environ.get("EVENT_SERVICE_URL", "http://localhost:5002")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")  # Optional webhook for async notifications
+LAMBDA_FUNCTION_NAME = os.environ.get("LAMBDA_FUNCTION_NAME", "")
+LAMBDA_REGION = os.environ.get("AWS_REGION", "us-east-1")
+lambda_client = boto3.client("lambda", region_name=LAMBDA_REGION) if LAMBDA_FUNCTION_NAME else None
 
 # ============================================================
 # Prometheus Metrics
@@ -213,16 +216,17 @@ def create_booking():
     SUCCESSFUL_BOOKINGS.inc()
     booking["created_at"] = booking["created_at"].isoformat()
 
-    # ASYNC WEBHOOK NOTIFICATION (Phase 16)
-    # Fire and forget. Even if this fails, the booking is already confirmed.
-    if WEBHOOK_URL:
-        def notify_webhook(booking_data):
-            try:
-                http_client.post(WEBHOOK_URL, json=booking_data, timeout=3)
-            except Exception as e:
-                app.logger.error(f"Async webhook failed, but booking is safe: {e}")
-        
-        threading.Thread(target=notify_webhook, args=(booking,)).start()
+    # ASYNC AWS LAMBDA NOTIFICATION (Phase 16)
+    # Use InvocationType="Event" to let AWS handle retries asynchronously.
+    if lambda_client and LAMBDA_FUNCTION_NAME:
+        try:
+            lambda_client.invoke(
+                FunctionName=LAMBDA_FUNCTION_NAME,
+                InvocationType="Event",
+                Payload=json.dumps(booking)
+            )
+        except Exception as e:
+            app.logger.error(f"Async Lambda invoke failed, but booking is safe: {e}")
 
     return jsonify(booking), 201
 
