@@ -20,6 +20,7 @@ Communication between services happens through REST APIs.
 
 import os
 import time
+import threading
 
 from flask import Flask, jsonify, request
 from psycopg.rows import dict_row
@@ -31,9 +32,9 @@ from db import get_db, init_db
 app = Flask(__name__)
 
 # Service URLs — configurable via environment variables.
-# Locally: localhost. Docker: container names. Kubernetes: service names.
 USER_SERVICE_URL = os.environ.get("USER_SERVICE_URL", "http://localhost:5001")
 EVENT_SERVICE_URL = os.environ.get("EVENT_SERVICE_URL", "http://localhost:5002")
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")  # Optional webhook for async notifications
 
 # ============================================================
 # Prometheus Metrics
@@ -211,6 +212,18 @@ def create_booking():
 
     SUCCESSFUL_BOOKINGS.inc()
     booking["created_at"] = booking["created_at"].isoformat()
+
+    # ASYNC WEBHOOK NOTIFICATION (Phase 16)
+    # Fire and forget. Even if this fails, the booking is already confirmed.
+    if WEBHOOK_URL:
+        def notify_webhook(booking_data):
+            try:
+                http_client.post(WEBHOOK_URL, json=booking_data, timeout=3)
+            except Exception as e:
+                app.logger.error(f"Async webhook failed, but booking is safe: {e}")
+        
+        threading.Thread(target=notify_webhook, args=(booking,)).start()
+
     return jsonify(booking), 201
 
 
