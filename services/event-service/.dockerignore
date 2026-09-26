@@ -1,0 +1,13 @@
+# Ignore these files when building Docker images.
+# Keeps images small and prevents accidentally copying secrets.
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.git/
+.gitignore
+tests/
+*.md

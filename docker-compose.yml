@@ -1,0 +1,100 @@
+# Docker Compose for ReserveX
+#
+# WHY Docker Compose:
+# Runs all containers together with one command. Handles networking
+# so containers can find each other by service name instead of localhost.
+#
+# IMPORTANT NETWORKING CHANGE:
+# Locally:    http://localhost:5001
+# In Docker:  http://user-service:5001
+#
+# WHY? Each container has its own network namespace. "localhost" inside
+# the booking-service container refers to the booking-service container
+# itself, NOT the user-service. Docker Compose creates a shared network
+# and registers each service's name as a DNS entry.
+
+services:
+  # ============================================================
+  # PostgreSQL Database
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: reservex
+      POSTGRES_USER: reservex
+      POSTGRES_PASSWORD: REPLACE_ME_PASSWORD
+    ports:
+      - "5432:5432"
+    volumes:
+      # Mount init scripts — PostgreSQL runs these on first start
+      - ./database/init:/docker-entrypoint-initdb.d
+      # Persist data across container restarts
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reservex -d reservex"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # User Service
+  # ============================================================
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # Event Service
+  # ============================================================
+  event-service:
+    build: ./services/event-service
+    ports:
+      - "5002:5002"
+    environment:
+      DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # Booking Service (orchestrator)
+  # ============================================================
+  # Notice: USER_SERVICE_URL and EVENT_SERVICE_URL use Docker service names,
+  # NOT localhost. This is the key networking change from local development.
+  booking-service:
+    build: ./services/booking-service
+    ports:
+      - "5003:5003"
+    environment:
+      DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex
+      USER_SERVICE_URL: http://user-service:5001
+      EVENT_SERVICE_URL: http://event-service:5002
+    depends_on:
+      user-service:
+        condition: service_healthy
+      event-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:
