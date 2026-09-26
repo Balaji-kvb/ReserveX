@@ -321,4 +321,26 @@ You can't fix what you can't see. When traffic spikes or errors occur, you need 
 
 ---
 
-*This document is built incrementally. Sections for AWS, Terraform, and CI/CD will be added as those phases complete.*
+## AWS & Terraform
+
+### WHAT
+- **AWS (Amazon Web Services)** is our cloud provider.
+- **Terraform** is an Infrastructure as Code (IaC) tool. It uses declarative configuration files to create and manage cloud resources.
+
+### WHY Terraform
+Instead of clicking through the AWS console to create a VPC, subnets, and an EKS cluster (which is error-prone and hard to reproduce), we write code. If we need to tear down the environment to save costs, we just run `terraform destroy`. To bring it back, `terraform apply`.
+
+### Infrastructure Components
+- **VPC (Virtual Private Cloud)**: Our private network in AWS.
+- **Subnets**: We use 3 public and 3 private subnets across 3 Availability Zones for high availability.
+- **NAT Gateway**: Allows pods in private subnets to reach the internet (e.g., to pull Docker images or call external APIs) without being exposed to incoming traffic.
+- **EKS (Elastic Kubernetes Service)**: AWS's managed Kubernetes service. AWS manages the control plane (the master nodes), and we manage the worker nodes.
+- **EBS CSI Driver**: Needed so Kubernetes can provision actual AWS EBS volumes when we ask for a `PersistentVolumeClaim` (used by our PostgreSQL StatefulSet).
+
+### The EKS PostgreSQL Decision
+As noted in the prompt's `Correction #2`, we are deploying PostgreSQL as a StatefulSet inside EKS using an EBS volume, rather than using AWS RDS.
+- **Why?** It's significantly cheaper for an academic project, while still demonstrating persistent state management in Kubernetes. Production systems typically use managed databases like RDS.
+
+---
+
+*This document is built incrementally. Sections for CI/CD and AWS Lambda will be added as those phases complete.*
