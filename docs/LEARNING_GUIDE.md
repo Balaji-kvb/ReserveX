@@ -343,4 +343,38 @@ As noted in the prompt's `Correction #2`, we are deploying PostgreSQL as a State
 
 ---
 
-*This document is built incrementally. Sections for CI/CD and AWS Lambda will be added as those phases complete.*
+## AWS Lambda & Async Architecture
+
+### WHAT
+AWS Lambda is a serverless compute service. It runs code in response to events without provisioning servers.
+
+### WHY
+In Phase 16, we configured the Booking Service to trigger a webhook when a booking is confirmed. If this was a synchronous (blocking) call, our Booking Service would have to wait for the webhook to finish before telling the user "Success!". If the webhook server crashed, the booking might fail even though it was already saved in PostgreSQL.
+
+### HOW (Fire-and-Forget)
+We use a background thread (`threading.Thread`) in the Flask app to make the HTTP POST request to the Lambda webhook URL. If the webhook fails or times out, we catch the exception and log it, but the main thread has already returned a `201 Created` to the user. This enforces the hard rule: **Lambda failures must never roll back an already-successful booking.**
+
+---
+
+## CI/CD (GitHub Actions)
+
+### WHAT
+Continuous Integration / Continuous Deployment. Automates the testing and deployment of our code every time we push to GitHub.
+
+### WHY
+We don't want to manually run tests or manually build Docker images on our laptop. The CI pipeline guarantees that code is tested in a clean environment and images are built consistently.
+
+### The Pipeline (`.github/workflows/ci.yml`)
+1. **Test Job**:
+   - Spins up a temporary PostgreSQL container (Service Container).
+   - Initializes the database with our schema and seed data.
+   - Starts all 3 Python microservices in the background.
+   - Runs our full integration test suite, including the 200-request concurrency test.
+2. **Build and Push Job**:
+   - Only runs if tests pass and code is pushed to the `main` branch.
+   - Authenticates to AWS securely using **GitHub OIDC** (no hardcoded passwords).
+   - Uses `docker buildx` to build multi-architecture images (AMD64 and ARM64).
+   - Pushes the images to AWS ECR.
+
+---
+**End of Learning Guide**

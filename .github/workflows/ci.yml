@@ -1,0 +1,125 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+# Phase 19: GitHub Actions CI/CD
+# Correction #6 emphasizes avoiding confusion with webhook auth:
+# This workflow uses GitHub OIDC to securely authenticate to AWS without
+# storing long-lived access keys in GitHub Secrets.
+permissions:
+  id-token: write # Required for AWS OIDC authentication
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY_USER: reservex-user-service
+  ECR_REPOSITORY_EVENT: reservex-event-service
+  ECR_REPOSITORY_BOOKING: reservex-booking-service
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: reservex
+          POSTGRES_USER: reservex
+          POSTGRES_PASSWORD: REPLACE_ME_PASSWORD
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest requests
+          pip install -r services/booking-service/requirements.txt
+
+      - name: Initialize Database
+        env:
+          PGPASSWORD: REPLACE_ME_PASSWORD
+        run: |
+          psql -h localhost -U reservex -d reservex -f database/init/001_schema.sql
+          psql -h localhost -U reservex -d reservex -f database/seed/seed_data.sql
+
+      - name: Start Services
+        env:
+          DATABASE_URL: postgresql://reservex:REPLACE_ME_PASSWORD@localhost:5432/reservex
+          USER_SERVICE_URL: http://localhost:5001
+          EVENT_SERVICE_URL: http://localhost:5002
+        run: |
+          python services/user-service/app.py &
+          python services/event-service/app.py &
+          python services/booking-service/app.py &
+          sleep 5 # Wait for services to start
+
+      - name: Run Integration Tests
+        run: |
+          python services/user-service/tests/test_api.py
+          python services/event-service/tests/test_api.py
+          python services/booking-service/tests/test_api.py
+          python services/booking-service/tests/test_concurrency.py
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/GitHubActionsRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push User Service
+        uses: docker/build-push-action@v5
+        with:
+          context: services/user-service
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_USER }}:${{ github.sha }}
+
+      - name: Build and push Event Service
+        uses: docker/build-push-action@v5
+        with:
+          context: services/event-service
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_EVENT }}:${{ github.sha }}
+
+      - name: Build and push Booking Service
+        uses: docker/build-push-action@v5
+        with:
+          context: services/booking-service
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY_BOOKING }}:${{ github.sha }}

@@ -1,0 +1,122 @@
+{
+  "AWSEBDockerrunVersion": 2,
+  "volumes": [
+    {
+      "name": "pgdata",
+      "host": {
+        "sourcePath": "/var/app/current/pgdata"
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "postgres",
+      "image": "postgres:16-alpine",
+      "essential": true,
+      "memory": 256,
+      "portMappings": [
+        {
+          "hostPort": 5432,
+          "containerPort": 5432
+        }
+      ],
+      "environment": [
+        {
+          "name": "POSTGRES_DB",
+          "value": "reservex"
+        },
+        {
+          "name": "POSTGRES_USER",
+          "value": "reservex"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "value": "REPLACE_ME_PASSWORD"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "pgdata",
+          "containerPath": "/var/lib/postgresql/data"
+        }
+      ]
+    },
+    {
+      "name": "user-service",
+      "image": "AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/reservex-user-service:latest",
+      "essential": true,
+      "memory": 128,
+      "portMappings": [
+        {
+          "hostPort": 5001,
+          "containerPort": 5001
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex"
+        }
+      ],
+      "links": [
+        "postgres"
+      ]
+    },
+    {
+      "name": "event-service",
+      "image": "AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/reservex-event-service:latest",
+      "essential": true,
+      "memory": 128,
+      "portMappings": [
+        {
+          "hostPort": 5002,
+          "containerPort": 5002
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex"
+        }
+      ],
+      "links": [
+        "postgres"
+      ]
+    },
+    {
+      "name": "booking-service",
+      "image": "AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/reservex-booking-service:latest",
+      "essential": true,
+      "memory": 256,
+      "portMappings": [
+        {
+          "hostPort": 80,
+          "containerPort": 5003
+        }
+      ],
+      "environment": [
+        {
+          "name": "DATABASE_URL",
+          "value": "postgresql://reservex:REPLACE_ME_PASSWORD@postgres:5432/reservex"
+        },
+        {
+          "name": "USER_SERVICE_URL",
+          "value": "http://user-service:5001"
+        },
+        {
+          "name": "EVENT_SERVICE_URL",
+          "value": "http://event-service:5002"
+        },
+        {
+          "name": "WEBHOOK_URL",
+          "value": "https://api.example.com/webhook"
+        }
+      ],
+      "links": [
+        "postgres",
+        "user-service",
+        "event-service"
+      ]
+    }
+  ]
+}
