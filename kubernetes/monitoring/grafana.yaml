@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource
+  namespace: reservex
+data:
+  datasource.yml: |
+    apiVersion: 1
+    datasources:
+    - name: Prometheus
+      type: prometheus
+      url: http://prometheus:9090
+      access: proxy
+      isDefault: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: reservex
+data:
+  dashboards.yml: |
+    apiVersion: 1
+    providers:
+    - name: 'ReserveX Dashboards'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: reservex
+data:
+  reservex.json: |
+    {
+      "title": "ReserveX Metrics",
+      "panels": [
+        {
+          "type": "stat",
+          "title": "Total Booking Requests",
+          "gridPos": {"x": 0, "y": 0, "w": 8, "h": 8},
+          "targets": [{"expr": "sum(booking_requests_total)"}]
+        },
+        {
+          "type": "stat",
+          "title": "Successful Bookings",
+          "gridPos": {"x": 8, "y": 0, "w": 8, "h": 8},
+          "targets": [{"expr": "sum(successful_bookings_total)"}]
+        },
+        {
+          "type": "stat",
+          "title": "Failed Bookings",
+          "gridPos": {"x": 16, "y": 0, "w": 8, "h": 8},
+          "targets": [{"expr": "sum(failed_bookings_total)"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP Request Duration (P99)",
+          "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+          "targets": [{"expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))", "legendFormat": "{{endpoint}}"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Booking Service Replicas (HPA)",
+          "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+          "targets": [{"expr": "kube_deployment_status_replicas_available{deployment=\"booking-service\"}", "legendFormat": "Replicas"}]
+        },
+        {
+          "type": "timeseries",
+          "title": "Request Rate by Endpoint",
+          "gridPos": {"x": 0, "y": 16, "w": 24, "h": 8},
+          "targets": [{"expr": "sum(rate(http_requests_total[5m])) by (endpoint, method, status)", "legendFormat": "{{method}} {{endpoint}} ({{status}})"}]
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: reservex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.1.0
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: grafana-dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: grafana-dashboards
+              mountPath: /var/lib/grafana/dashboards
+      volumes:
+        - name: grafana-datasources
+          configMap:
+            name: grafana-datasource
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: reservex
+spec:
+  type: NodePort
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30030

@@ -300,4 +300,25 @@ metrics:
 
 ---
 
-*This document is built incrementally. Sections for Prometheus/Grafana, AWS, Terraform, and CI/CD will be added as those phases complete.*
+## Prometheus & Grafana
+
+### WHAT
+- **Prometheus** is a time-series database and monitoring system. It "scrapes" metrics from your applications periodically.
+- **Grafana** is a visualization tool that queries Prometheus and draws beautiful dashboards.
+
+### WHY
+You can't fix what you can't see. When traffic spikes or errors occur, you need to know immediately.
+
+### HOW IT WORKS
+1. **Application Code**: We added the `prometheus_client` library to our Flask apps.
+2. **Metrics Endpoint**: Each app exposes `/metrics` with raw data.
+3. **Annotations**: We added `prometheus.io/scrape: "true"` to our Kubernetes Deployments.
+4. **Auto-Discovery**: Prometheus uses the Kubernetes API to find any pods with those annotations and starts scraping them automatically.
+5. **Grafana Dashboards**: We configured Grafana to query Prometheus and visualize:
+   - Total/Successful/Failed Bookings (Business Metrics)
+   - HTTP Request Duration P99 (Performance Metrics)
+   - HPA Replicas (Infrastructure Metrics, using `kube_deployment_status_replicas_available`)
+
+---
+
+*This document is built incrementally. Sections for AWS, Terraform, and CI/CD will be added as those phases complete.*
