@@ -248,4 +248,56 @@ booking-service → port 5003
 
 ---
 
-*This document is built incrementally. Sections for Kubernetes, AWS, Terraform, CI/CD will be added as those phases complete.*
+## Kubernetes
+
+### WHAT
+Kubernetes (K8s) is a container orchestration platform. It manages running Docker containers across a cluster of machines.
+
+### WHY
+While Docker Compose is great for local development on one machine, Kubernetes is built for production:
+- **Self-healing**: If a pod crashes, K8s restarts it automatically.
+- **Scaling**: K8s can run many copies (replicas) of a service and load balance traffic between them.
+- **Service Discovery**: Built-in DNS (`http://user-service:5001`) works cluster-wide.
+
+### Key Concepts Used
+
+| Concept | Purpose in ReserveX |
+|---|---|
+| **Pod** | The smallest deployable unit. One instance of our Flask app container. |
+| **Deployment** | Manages stateless Pods (User, Event, Booking services). Ensures X replicas are always running. |
+| **StatefulSet** | Manages stateful Pods (PostgreSQL). Ensures stable network ID and persistent storage across restarts. |
+| **Service (ClusterIP)** | Internal networking. Allows Booking Service to talk to User/Event services safely. |
+| **Service (NodePort/LoadBalancer)** | External networking. Exposes Booking Service to the outside world. |
+| **ConfigMap** | Stores non-secret config like `USER_SERVICE_URL`. |
+| **Secret** | Stores base64-encoded sensitive data like `DATABASE_URL`. |
+
+---
+
+## HPA & Scaling
+
+### WHAT
+Horizontal Pod Autoscaler (HPA) automatically updates a workload resource (like a Deployment) with the aim of automatically scaling the workload to match demand.
+
+### WHY
+Traffic is spiky. You don't want to pay for 100 servers at 3 AM when traffic is low, but you need them at 10 AM during a ticket release.
+
+### HOW (Booking Service HPA)
+```yaml
+metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+```
+1. **Metrics Server** constantly monitors CPU usage of all pods.
+2. We use `k6` to send thousands of requests to the Booking Service.
+3. CPU utilization spikes above 60%.
+4. HPA notices this and tells the Deployment to create more pods (up to our max of 5).
+5. Kubernetes routes incoming traffic across all 5 pods.
+6. When the load test stops, CPU drops, and HPA scales back down to 1 pod.
+
+---
+
+*This document is built incrementally. Sections for Prometheus/Grafana, AWS, Terraform, and CI/CD will be added as those phases complete.*

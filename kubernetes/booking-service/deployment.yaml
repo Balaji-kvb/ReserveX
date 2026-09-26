@@ -1,0 +1,62 @@
+# Booking Service Deployment — the primary scaling target.
+# This is the only service that gets HPA (Phase 8).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+  namespace: reservex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5003"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: booking-service
+          image: reservex-booking-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5003
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: reservex-db-secret
+                  key: DATABASE_URL
+            - name: USER_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: reservex-config
+                  key: USER_SERVICE_URL
+            - name: EVENT_SERVICE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: reservex-config
+                  key: EVENT_SERVICE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5003
+            initialDelaySeconds: 15
+            periodSeconds: 10

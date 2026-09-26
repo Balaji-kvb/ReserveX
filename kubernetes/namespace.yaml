@@ -1,0 +1,6 @@
+# Namespace isolates ReserveX resources from other workloads.
+# WHY: Prevents naming collisions and allows easy cleanup (delete the namespace).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reservex

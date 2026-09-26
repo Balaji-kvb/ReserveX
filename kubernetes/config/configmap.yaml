@@ -1,0 +1,14 @@
+# ConfigMap: non-secret configuration shared across services.
+# WHY: Externalizes config from code. Change a ConfigMap value and
+# redeploy without rebuilding Docker images.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: reservex-config
+  namespace: reservex
+data:
+  # Service discovery URLs — Kubernetes DNS resolves these
+  # Format: <service-name>.<namespace>.svc.cluster.local:<port>
+  # Short form also works: <service-name>:<port> (within same namespace)
+  USER_SERVICE_URL: "http://user-service:5001"
+  EVENT_SERVICE_URL: "http://event-service:5002"

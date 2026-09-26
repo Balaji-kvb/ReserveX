@@ -1,0 +1,149 @@
+# PostgreSQL StatefulSet for Kubernetes
+#
+# WHY StatefulSet instead of Deployment:
+# StatefulSets provide stable network identities and persistent storage.
+# When a PostgreSQL pod restarts, it gets the same PVC (data survives).
+# A Deployment would potentially lose data on pod recreation.
+#
+# DESIGN DECISION (Correction #2):
+# For this student/demo deployment, PostgreSQL runs as a single
+# StatefulSet inside the cluster with one persistent volume claim.
+# - 1 PostgreSQL replica (no HA)
+# - Persistent storage via PVC
+# - No RDS (cost-conscious academic design)
+# - NOT a production-grade HA database architecture
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: reservex
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: reservex-db-secret
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: reservex-db-secret
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: reservex-db-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - reservex
+                - -d
+                - reservex
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - reservex
+                - -d
+                - reservex
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+# Headless Service for StatefulSet DNS resolution
+# WHY headless (clusterIP: None): StatefulSets need stable DNS names
+# like postgres-0.postgres.reservex.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: reservex
+spec:
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# ConfigMap with the init SQL script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: reservex
+data:
+  001_schema.sql: |
+    CREATE TABLE IF NOT EXISTS users (
+        id          SERIAL PRIMARY KEY,
+        name        VARCHAR(255) NOT NULL,
+        email       VARCHAR(255) NOT NULL UNIQUE,
+        created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+    CREATE TABLE IF NOT EXISTS events (
+        id               SERIAL PRIMARY KEY,
+        name             VARCHAR(255) NOT NULL,
+        total_slots      INTEGER NOT NULL CHECK (total_slots > 0),
+        available_slots  INTEGER NOT NULL CHECK (available_slots >= 0),
+        created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        CONSTRAINT slots_within_bounds CHECK (available_slots <= total_slots)
+    );
+
+    CREATE TABLE IF NOT EXISTS bookings (
+        id          SERIAL PRIMARY KEY,
+        user_id     INTEGER NOT NULL,
+        event_id    INTEGER NOT NULL,
+        status      VARCHAR(20) NOT NULL DEFAULT 'CONFIRMED',
+        created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);
+    CREATE INDEX IF NOT EXISTS idx_bookings_event_id ON bookings(event_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_unique_active
+        ON bookings(user_id, event_id) WHERE status = 'CONFIRMED';

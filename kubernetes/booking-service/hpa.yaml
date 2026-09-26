@@ -1,0 +1,36 @@
+# Horizontal Pod Autoscaler for Booking Service
+#
+# WHY HPA: Automatically adds or removes pods based on CPU load.
+# When k6 generates traffic → CPU rises → HPA creates more pods.
+# When traffic stops → CPU drops → HPA removes pods.
+#
+# HOW:
+# 1. Metrics Server collects CPU metrics from each pod
+# 2. HPA checks metrics every 15 seconds (default)
+# 3. If average CPU > 60%, HPA increases replicas
+# 4. If average CPU < 60%, HPA decreases replicas (after stabilization)
+#
+# IMPORTANT: Scaling is NOT instant. It takes time because:
+# - Metrics are collected periodically
+# - Scale-up has a stabilization window
+# - Scale-down has a longer stabilization window (default 5 min)
+#   to prevent thrashing
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: booking-service-hpa
+  namespace: reservex
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: booking-service
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

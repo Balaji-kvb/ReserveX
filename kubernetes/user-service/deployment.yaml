@@ -1,0 +1,54 @@
+# User Service Deployment
+# WHY Deployment (not StatefulSet): Stateless application.
+# Any pod can handle any request, pods are interchangeable.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: reservex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+      annotations:
+        # Prometheus will discover and scrape this pod
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5001"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: user-service
+          image: reservex-user-service:latest
+          imagePullPolicy: Never  # Use local images in Minikube
+          ports:
+            - containerPort: 5001
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: reservex-db-secret
+                  key: DATABASE_URL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 15
+            periodSeconds: 10
