@@ -57,10 +57,10 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 resource "aws_instance" "load_generator" {
   ami           = data.aws_ami.amazon_linux_2023.id
   instance_type = "t3.medium" # Needs some CPU to generate high load
-  
-  subnet_id                   = module.vpc.private_subnets[0]
-  vpc_security_group_ids      = [aws_security_group.load_generator_sg.id]
-  iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
+
+  subnet_id              = module.vpc.private_subnets[0]
+  vpc_security_group_ids = [aws_security_group.load_generator_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
 
   # Install k6 automatically
   user_data = <<-EOF
@@ -75,6 +75,6 @@ resource "aws_instance" "load_generator" {
 }
 
 output "load_generator_id" {
-  value = aws_instance.load_generator.id
+  value       = aws_instance.load_generator.id
   description = "Use AWS Systems Manager (SSM) Session Manager to connect to this instance"
 }

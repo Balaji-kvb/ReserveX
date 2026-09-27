@@ -3,7 +3,7 @@ module "eks" {
   version = "~> 20.0"
 
   cluster_name    = var.cluster_name
-  cluster_version = "1.29"
+  cluster_version = "1.35"
 
   vpc_id                         = module.vpc.vpc_id
   subnet_ids                     = module.vpc.private_subnets
@@ -13,9 +13,9 @@ module "eks" {
 
   # Add EBS CSI driver for our PostgreSQL PVC (Correction #2)
   cluster_addons = {
-    coredns = {}
+    coredns    = {}
     kube-proxy = {}
-    vpc-cni = {}
+    vpc-cni    = {}
     aws-ebs-csi-driver = {
       most_recent = true
     }
