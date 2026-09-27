@@ -100,5 +100,5 @@ Based on a strict technical read-only verification audit against the Master Prom
 ## 4. MISSING / NON-COMPLIANT
 
 **None.**
-* **Git Secret History**: The `REDACTED_DEVELOPMENT_SECRET` string has been fully scrubbed from the repository and Git history via `git filter-repo`.
+* **Git Secret History**: The previously hardcoded database password scrubbed from the repository and Git history.
 * **Code / Architecture**: All local requirements have been met in accordance with the Master Prompt v2.
