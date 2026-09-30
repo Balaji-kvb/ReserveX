@@ -7,10 +7,15 @@ resource "aws_elastic_beanstalk_application" "reservex" {
   description = "ReserveX event reservation platform"
 }
 
+data "aws_elastic_beanstalk_solution_stack" "docker" {
+  most_recent = true
+  name_regex  = "^64bit Amazon Linux 2023 v.* running Docker$"
+}
+
 resource "aws_elastic_beanstalk_environment" "staging" {
   name                = "reservex-staging"
   application         = aws_elastic_beanstalk_application.reservex.name
-  solution_stack_name = "64bit Amazon Linux 2023 v4.5.2 running Docker"
+  solution_stack_name = data.aws_elastic_beanstalk_solution_stack.docker.name
   tier                = "WebServer"
 
   # Single-instance: no ELB, cheapest option for staging.

@@ -27,7 +27,7 @@ module "eks" {
       min_size     = 2
       max_size     = 5
 
-      instance_types = ["t3.medium"]
+      instance_types = ["t3.small"]
       capacity_type  = "ON_DEMAND"
 
       # Attach policy for EBS CSI driver so it can provision volumes

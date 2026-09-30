@@ -56,7 +56,7 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 
 resource "aws_instance" "load_generator" {
   ami           = data.aws_ami.amazon_linux_2023.id
-  instance_type = "t3.medium" # Needs some CPU to generate high load
+  instance_type = "t3.small"
 
   subnet_id              = module.vpc.private_subnets[0]
   vpc_security_group_ids = [aws_security_group.load_generator_sg.id]
