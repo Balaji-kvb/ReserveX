@@ -19,8 +19,8 @@ spec:
     spec:
       containers:
         - name: event-service
-          image: reservex-event-service:latest
-          imagePullPolicy: Never
+          image: 667747481883.dkr.ecr.ap-south-1.amazonaws.com/reservex-event-service:v1
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5002
           env:

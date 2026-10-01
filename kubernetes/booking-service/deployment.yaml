@@ -21,8 +21,8 @@ spec:
     spec:
       containers:
         - name: booking-service
-          image: reservex-booking-service:latest
-          imagePullPolicy: Never
+          image: 667747481883.dkr.ecr.ap-south-1.amazonaws.com/reservex-booking-service:v1
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5003
           env:

@@ -9,6 +9,16 @@ module "eks" {
   subnet_ids                     = module.vpc.private_subnets
   cluster_endpoint_public_access = true
 
+  node_security_group_additional_rules = {
+    ingress_cluster_metrics_server = {
+      description                   = "Cluster API to Metrics Server"
+      protocol                      = "tcp"
+      from_port                     = 10251
+      to_port                       = 10251
+      type                          = "ingress"
+      source_cluster_security_group = true
+    }
+  }
   enable_cluster_creator_admin_permissions = true
 
   # Add EBS CSI driver for our PostgreSQL PVC (Correction #2)
@@ -17,6 +27,9 @@ module "eks" {
     kube-proxy = {}
     vpc-cni    = {}
     aws-ebs-csi-driver = {
+      most_recent = true
+    }
+    metrics-server = {
       most_recent = true
     }
   }

@@ -23,8 +23,8 @@ spec:
     spec:
       containers:
         - name: user-service
-          image: reservex-user-service:latest
-          imagePullPolicy: Never  # Use local images in Minikube
+          image: 667747481883.dkr.ecr.ap-south-1.amazonaws.com/reservex-user-service:v1
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5001
           env:
